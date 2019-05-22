@@ -12,7 +12,7 @@ bool SerialPortTool::open_serial()
         return false;
     }
 
-    //this->serial->setBaudRate(QSerialPort::Baud115200);
+#if 1
     this->serial->setBaudRate(ui->comboBox_baudrate_list->currentText().toInt());
 
     switch(ui->comboBox_data_bit_list->currentIndex())
@@ -95,7 +95,14 @@ bool SerialPortTool::open_serial()
         default:
             this->serial->setFlowControl(QSerialPort::NoFlowControl);
     }
+#else
 
+    this->serial->setBaudRate(115200);
+    this->serial->setDataBits(QSerialPort::Data8);
+    this->serial->setParity(QSerialPort::NoParity);
+    this->serial->setStopBits(QSerialPort::OneStop);
+    this->serial->setFlowControl(QSerialPort::NoFlowControl);
+#endif
     connect(this->serial, &QSerialPort::readyRead, this, &SerialPortTool::ReadData);
 
     return true;
@@ -120,6 +127,68 @@ void SerialPortTool::refresh_serial()
         //qDebug() << "Manufacturer:" << info.manufacturer();
 #endif
         ui->comboBox_com_list->addItem(info.portName());
+    }
+}
+
+char char_to_hex(char c)
+{
+    if((c >= '0') && (c <= '9'))
+    {
+        return c-'0';
+    }
+    else if((c >= 'A') && (c <= 'F'))
+    {
+        return c-'A';
+    }
+    else if((c >= 'a') && (c <= 'f'))
+    {
+        return c-'a';
+    }
+    else
+    {
+        return 0;
+    }
+}
+void SerialPortTool::send_serial(QString str)
+{
+    if(this->hex_send_flag == 0)
+    {
+        if(this->display_time_flag)
+        {
+            QTime time = QTime::currentTime();
+            this->serial->write(("["+time.toString("hh:mm:ss")+"]>>>").toLocal8Bit());
+        }
+
+        this->serial->write(str.toLocal8Bit());
+
+        if(this->crlf_flag)
+        {
+            this->serial->write("\r\n");
+        }
+    }
+    else
+    {
+        char hex_data[256];
+        uint16_t index = 0;
+        char *p = str.toUtf8().data();
+        char hb = 0, lb = 0;
+
+        for(int i=0; i<str.length();)
+        {
+            if(p[i] != ' ')
+            {
+                hb = char_to_hex(p[i]);
+                lb = char_to_hex(p[i]);
+                hex_data[index++] = (hb << 4) | lb;
+                i += 2;
+            }
+            else
+            {
+                i++;
+            }
+        }
+
+        this->serial->write(hex_data);
     }
 }
 
@@ -219,8 +288,8 @@ void SerialPortTool::setupQuadraticDemo(QCustomPlot *customPlot)
     QVector<double> x(2000), y(2000); // initialize with entries 0..100
     for (int i=0; i<2000; ++i)
     {
-    x[i] = i/50.0; // x goes from -1 to 1
-    y[i] = x[i]*x[i];  // let's plot a quadratic function
+        x[i] = i/50.0; // x goes from -1 to 1
+        y[i] = x[i]*x[i];  // let's plot a quadratic function
     }
 #endif
     // create graph and assign data to it:
@@ -238,6 +307,111 @@ void SerialPortTool::setupQuadraticDemo(QCustomPlot *customPlot)
     // Note: we could have also just called customPlot->rescaleAxes(); instead
     // Allow user to drag axis ranges with mouse, zoom with mouse wheel and select graphs by clicking:
     customPlot->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom | QCP::iSelectPlottables);
+}
+
+void SerialPortTool::set_config_file_default()
+{
+    QWidget *widget;
+    int r = 0, c = 0;
+    char str[32];
+
+    this->config_file->clear();
+
+    this->config_file->beginGroup("Config.ini");
+    this->config_file->setValue("Note","非专业人员请勿乱动此文件！！！");
+    this->config_file->endGroup();
+
+    for(r=0; r<100; r++)
+    {
+        c = 0;
+
+        sprintf(str, "cmd_str_%03d", r);
+        this->config_file->beginGroup(str);
+
+        this->config_file->setValue("hex", false);
+        widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+        QCheckBox *checkBox = (QCheckBox*)widget;
+        checkBox->setCheckState(Qt::Unchecked);
+
+        if(r<3)
+        {
+            sprintf(str, "test cmd demo %d", r);
+            this->config_file->setValue("cmd_str", str);
+            widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+            QLineEdit *lineEdit1 = (QLineEdit*)widget;
+            lineEdit1->setText(str);
+        }
+        else
+        {
+            this->config_file->setValue("cmd_str", "");
+            widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+            QLineEdit *lineEdit1 = (QLineEdit*)widget;
+            lineEdit1->setText("");
+        }
+
+        sprintf(str, "cmd_%03d", r);
+        this->config_file->setValue("btn_name", str);
+        widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+        MyPushButton *pushButton = (MyPushButton*)widget;
+        pushButton->setText(str);
+
+        if(r<3)
+        {
+            this->config_file->setValue("ser", r);
+            widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+            QLineEdit *lineEdit2 = (QLineEdit*)widget;
+            lineEdit2->setText(QString::number(r));
+        }
+        else
+        {
+            this->config_file->setValue("ser", 0);
+            widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+            QLineEdit *lineEdit2 = (QLineEdit*)widget;
+            lineEdit2->setText(QString::number(0));
+        }
+
+        this->config_file->setValue("delay", 1000);
+        widget = ui->tableWidget_cmd_list->cellWidget(r+1, c++);
+        QLineEdit *lineEdit3 = (QLineEdit*)widget;
+        lineEdit3->setText(QString::number(1000));
+
+        this->config_file->endGroup();
+    }
+}
+
+void SerialPortTool::set_config_cmd_list()
+{
+    QWidget *widget;
+    int r = 0, c = 0;
+    char str[32];
+
+    for(r=1; r<101; r++)
+    {
+        c = 0;
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QCheckBox *checkBox = (QCheckBox*)widget;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit1 = (QLineEdit*)widget;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        MyPushButton *pushButton = (MyPushButton*)widget;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit2 = (QLineEdit*)widget;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit3 = (QLineEdit*)widget;
+
+        sprintf(str, "cmd_str_%03d", r-1);
+        this->config_file->beginGroup(str);
+        this->config_file->setValue("hex", checkBox->isChecked());
+        this->config_file->setValue("cmd_str", lineEdit1->text());
+        this->config_file->setValue("btn_name", pushButton->text());
+        this->config_file->setValue("ser", lineEdit2->text().toInt());
+        this->config_file->setValue("delay", lineEdit3->text().toInt());
+        this->config_file->endGroup();
+    }
 }
 
 SerialPortTool::SerialPortTool(QWidget *parent) :
@@ -269,6 +443,22 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     ui->comboBox_baudrate_list->setCurrentText("115200");
     ui->comboBox_data_bit_list->setCurrentText("8 bit");
     ui->comboBox_stop_bit_list->setCurrentText("1 bit");
+
+    this->config_file_name = QCoreApplication::applicationDirPath();
+    this->config_file_name += "./config.ini";
+
+    this->config_file = new QSettings(this->config_file_name, QSettings::IniFormat);
+    this->config_file->setIniCodec("UTF8");
+
+    this->config_file->beginGroup("network");
+    this->config_file->setValue("ip", "192.168.1.1");
+    this->config_file->endGroup();
+
+    QString ipstr = this->config_file->value("ip").toString();
+
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    ui->textEdit_recv->insertPlainText(ipstr);
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
 }
 
 void SerialPortTool::setCmdList()
@@ -361,7 +551,7 @@ void SerialPortTool::setCmdList()
                     {
                         QLineEdit *lineEdit = new QLineEdit();
 
-                        sprintf(str, "%02d", r);
+                        sprintf(str, "%0d", r);
                         lineEdit->setText(str);
 
                         ui->tableWidget_cmd_list->setCellWidget(r, c, lineEdit);
@@ -387,10 +577,7 @@ void SerialPortTool::setCmdList()
 
     //ui->tableWidget_cmd_list->resizeRowsToContents();
     ui->tableWidget_cmd_list->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
-    //ui->tableWidget_cmd_list->horizontalHeader()->setSectionResizeMode(1, QHeaderView::Stretch);
-    //ui->tableWidget_cmd_list->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
-    //ui->tableWidget_cmd_list->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
-    //ui->tableWidget_cmd_list->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
+
     ui->tableWidget_cmd_list->setColumnWidth(1, 200);
     ui->tableWidget_cmd_list->setColumnWidth(2, 94);
     ui->tableWidget_cmd_list->setColumnWidth(3, 28);
@@ -440,13 +627,8 @@ void SerialPortTool::OnBtnLeftClicked()
     QLineEdit *lineEdit = (QLineEdit*)widget;
 
     QString str_cmd = lineEdit->text();
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText(str_cmd);
-    if(this->crlf_flag)
-    {
-        ui->textEdit_recv->insertPlainText("\r\n");
-    }
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    this->send_serial(str_cmd);
 }
 
 void SerialPortTool::OnBtnRightClicked()
@@ -753,25 +935,6 @@ void SerialPortTool::on_checkBox_hex_recv_stateChanged(int arg1)
     }
 }
 
-char char_to_hex(char c)
-{
-    if((c >= '0') && (c <= '9'))
-    {
-        return c-'0';
-    }
-    else if((c >= 'A') && (c <= 'F'))
-    {
-        return c-'A';
-    }
-    else if((c >= 'a') && (c <= 'f'))
-    {
-        return c-'a';
-    }
-    else
-    {
-        return 0;
-    }
-}
 void SerialPortTool::on_pushButton_send_str_clicked()
 {
     QString str;
@@ -779,62 +942,7 @@ void SerialPortTool::on_pushButton_send_str_clicked()
     if(this->serial_open_flag == 1)
     {
         str = ui->textEdit_send->toPlainText();
-
-        ui->textEdit_recv->moveCursor(QTextCursor::End);
-        if(this->hex_send_flag == 0)
-        {
-            if(this->display_time_flag)
-            {
-                QTime time = QTime::currentTime();
-
-                ui->textEdit_recv->insertPlainText("["+time.toString("hh:mm:ss")+"]>>");
-                if(this->serial_open_flag)
-                {
-                    this->serial->write(("["+time.toString("hh:mm:ss")+"]>>").toLocal8Bit());
-                }
-            }
-
-            ui->textEdit_recv->insertPlainText(str);
-            if(this->serial_open_flag)
-            {
-                this->serial->write(str.toLocal8Bit());
-            }
-
-            if(this->crlf_flag)
-            {
-                ui->textEdit_recv->insertPlainText("\r\n");
-                if(this->serial_open_flag)
-                {
-                    this->serial->write("\r\n");
-                }
-            }
-        }
-        else
-        {
-            char hex_data[256];
-            uint16_t index = 0;
-            char *p = str.toUtf8().data();
-            char hb = 0, lb = 0;
-
-            for(int i=0; i<str.length();)
-            {
-                if(p[i] != ' ')
-                {
-                    hb = char_to_hex(p[i]);
-                    lb = char_to_hex(p[i]);
-                    hex_data[index++] = (hb << 4) | lb;
-                    i += 2;
-                }
-                else
-                {
-                    i++;
-                }
-            }
-
-            this->serial->write(hex_data);
-        }
-
-        ui->textEdit_recv->moveCursor(QTextCursor::End);
+        this->send_serial(str);
     }
     else
     {
@@ -913,16 +1021,12 @@ void SerialPortTool::on_pushButton_import_param_clicked()
 
 void SerialPortTool::on_pushButton_save_param_clicked()
 {
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_pushButton_save_param_clicked\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    this->set_config_cmd_list();
 }
 
 void SerialPortTool::on_pushButton_set_default_clicked()
 {
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_pushButton_set_default_clicked\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    this->set_config_file_default();
 }
 
 void SerialPortTool::on_toolButton_expand_config_serial_clicked()

@@ -15,6 +15,7 @@
 #include <QTime>
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
+#include <QSettings>
 
 #include "qcustomplot.h"
 
@@ -42,11 +43,18 @@ public:
     uint8_t serial_open_flag = 0;
     QString demoName;
 
+    QString config_file_name;
+    QSettings *config_file;
+
     void setCmdList();
     bool open_serial();
     void close_serial();
     void refresh_serial();
+    void send_serial(QString str);
     void setupQuadraticDemo(QCustomPlot *customPlot);
+
+    void set_config_file_default();
+    void set_config_cmd_list();
 
 private slots:
     void on_comboBox_baudrate_list_activated(const QString &arg1);
