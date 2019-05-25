@@ -16,6 +16,8 @@
 #include <QtSerialPort/QSerialPort>
 #include <QtSerialPort/QSerialPortInfo>
 #include <QSettings>
+#include <QMutex>
+#include <qapplication.h>
 
 #include "qcustomplot.h"
 
@@ -109,6 +111,7 @@ private slots:
     void OnBtnRightClicked();
     void onTimerOut();
     void ReadData();
+    void onCurrentLineHighLight();
 
     void on_toolButton_data_curve_clicked();
 

@@ -414,6 +414,22 @@ void SerialPortTool::set_config_cmd_list()
     }
 }
 
+void SerialPortTool::onCurrentLineHighLight()
+{
+    QTextEdit *edit = ui->textEdit_recv;
+    QList<QTextEdit::ExtraSelection> extraSelection;
+    QTextEdit::ExtraSelection selection;
+    QColor lineColor = QColor(Qt::gray).lighter(150);
+
+    selection.format.setBackground(lineColor);
+    selection.format.setProperty(QTextFormat::FullWidthSelection,true);
+    selection.cursor = edit->textCursor();
+    selection.cursor.clearSelection();
+    //将刚设置的 selection追加到链表当中
+    extraSelection.append(selection);
+    edit->setExtraSelections(extraSelection);
+}
+
 SerialPortTool::SerialPortTool(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::SerialPortTool)
@@ -450,15 +466,8 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     this->config_file = new QSettings(this->config_file_name, QSettings::IniFormat);
     this->config_file->setIniCodec("UTF8");
 
-    this->config_file->beginGroup("network");
-    this->config_file->setValue("ip", "192.168.1.1");
-    this->config_file->endGroup();
-
-    QString ipstr = this->config_file->value("ip").toString();
-
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText(ipstr);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    //高亮接收窗口鼠标所在行
+    connect(ui->textEdit_recv, SIGNAL(cursorPositionChanged()), this, SLOT(onCurrentLineHighLight()));
 }
 
 void SerialPortTool::setCmdList()
