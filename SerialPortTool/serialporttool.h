@@ -145,6 +145,8 @@ private slots:
 
     void on_toolButton_highlight_key_clicked();
 
+    void on_checkBox_stateChanged(int arg1);
+
 private:
     Ui::SerialPortTool *ui;
 };

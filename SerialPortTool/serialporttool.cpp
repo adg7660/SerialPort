@@ -1293,3 +1293,17 @@ void SerialPortTool::on_toolButton_highlight_key_clicked()
         this->highlight->setTextQueue(this->keyword_list);
     }
 }
+
+void SerialPortTool::on_checkBox_stateChanged(int arg1)
+{
+    if(arg1 == 2)
+    {
+        this->setWindowFlags(this->windowFlags() | Qt::WindowStaysOnTopHint);
+    }
+    else
+    {
+        this->setWindowFlags(this->windowFlags() &~ Qt::WindowStaysOnTopHint);
+    }
+
+    this->show();
+}

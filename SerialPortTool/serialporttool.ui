@@ -542,7 +542,7 @@
            <widget class="QTextEdit" name="textEdit_recv"/>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="6,2,1">
+           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="6,2,1,0">
             <property name="spacing">
              <number>2</number>
             </property>
@@ -578,6 +578,13 @@
              <widget class="QPushButton" name="pushButton_send_file">
               <property name="text">
                <string>开始传送</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox">
+              <property name="text">
+               <string>置前</string>
               </property>
              </widget>
             </item>
