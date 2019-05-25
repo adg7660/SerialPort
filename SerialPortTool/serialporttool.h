@@ -18,6 +18,8 @@
 #include <QtSerialPort/QSerialPortInfo>
 #include <QSettings>
 #include <QMutex>
+#include <QStatusBar>
+#include <QProgressBar>
 #include <qapplication.h>
 
 #include "qcustomplot.h"
@@ -53,6 +55,11 @@ public:
     Highlighter *highlight;
     QStringList keyword_list;
     QFile *auto_save_recv_file;
+    int recv_byte_count = 0;
+    int send_byte_count = 0;
+    QProgressBar *qProgressBar;
+    QLabel *label_tx_status;
+    QLabel *label_rx_status;
 
     QMutex recv_textEdit_mutex;
 

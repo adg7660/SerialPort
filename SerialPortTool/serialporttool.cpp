@@ -151,6 +151,8 @@ char char_to_hex(char c)
 }
 void SerialPortTool::send_serial(QString str)
 {
+    char pstr[32];
+
     if(this->hex_send_flag == 0)
     {
         if(this->display_time_flag)
@@ -164,7 +166,15 @@ void SerialPortTool::send_serial(QString str)
         if(this->crlf_flag)
         {
             this->serial->write("\r\n");
+            this->send_byte_count += str.length()+2;
         }
+        else
+        {
+            this->send_byte_count += str.length();
+        }
+
+        sprintf(pstr, "Tx:%d", this->send_byte_count);
+        this->label_tx_status->setText(pstr);
     }
     else
     {
@@ -189,6 +199,10 @@ void SerialPortTool::send_serial(QString str)
         }
 
         this->serial->write(hex_data);
+
+        this->send_byte_count += str.length();
+        sprintf(pstr, "Tx:%d", this->send_byte_count);
+        this->label_tx_status->setText(pstr);
     }
 }
 
@@ -258,6 +272,11 @@ void SerialPortTool::ReadData()
                 this->auto_save_recv_file->write(str.toUtf8());
                 this->auto_save_recv_file->flush();
             }
+
+            this->recv_byte_count += str.length();
+            char pstr[32];
+            sprintf(pstr, "Rx:%d", this->recv_byte_count);
+            this->label_rx_status->setText(pstr);
 
             buf.clear();
             str.clear();
@@ -545,6 +564,21 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     }
     this->config_file->endGroup();
     this->highlight->setTextQueue(this->keyword_list);
+
+    ui->statusBar->showMessage(tr("程序启动成功!"), 2000);
+    this->label_tx_status = new QLabel();
+    this->label_tx_status->setMinimumSize(84, 20);
+    this->label_tx_status->setText("Tx:0");
+    ui->statusBar->addPermanentWidget(this->label_tx_status);
+    this->label_rx_status = new QLabel();
+    this->label_rx_status->setMinimumSize(84, 20);
+    this->label_rx_status->setText("Rx:0");
+    ui->statusBar->addPermanentWidget(this->label_rx_status);
+
+    this->qProgressBar = new QProgressBar();
+    this->qProgressBar->setMinimumSize(256, 20);
+    this->qProgressBar->setMaximumSize(256, 20);
+    ui->statusBar->addPermanentWidget(this->qProgressBar);
 }
 
 void SerialPortTool::setCmdList()
@@ -964,9 +998,12 @@ void SerialPortTool::on_pushButton_manule_save_clicked()
 
 void SerialPortTool::on_pushButton_open_log_doc_clicked()
 {
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_pushButton_open_log_doc_clicked\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    QString file = QFileDialog::getOpenFileName(this, "打开", "./", "*.txt;;*.*");
+    if(!file.isEmpty())
+    {
+        QProcess *proc = new QProcess();
+        proc->start("notepad.exe " + file);
+    }
 }
 
 void SerialPortTool::on_checkBox_timer_send_stateChanged(int arg1)
@@ -1109,6 +1146,11 @@ void SerialPortTool::on_pushButton_send_str_clicked()
 
 void SerialPortTool::on_pushButton_clear_recv_clicked()
 {
+    this->recv_byte_count = 0;
+    this->send_byte_count = 0;
+
+    this->label_tx_status->setText("Tx:0");
+    this->label_rx_status->setText("Rx:0");
     ui->textEdit_recv->clear();
 }
 
