@@ -1,6 +1,7 @@
 #ifndef SERIALPORTTOOL_H
 #define SERIALPORTTOOL_H
 
+#include <string.h>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QComboBox>
@@ -20,6 +21,7 @@
 #include <qapplication.h>
 
 #include "qcustomplot.h"
+#include "highlight_keyword.h"
 
 namespace Ui {
 class SerialPortTool;
@@ -47,6 +49,8 @@ public:
 
     QString config_file_name;
     QSettings *config_file;
+    Highlighter *highlight;
+    QStringList keyword_list;
 
     void setCmdList();
     bool open_serial();
@@ -78,8 +82,6 @@ private slots:
     void on_checkBox_dtr_stateChanged(int arg1);
 
     void on_checkBox_autosave_stateChanged(int arg1);
-
-    void on_toolButton_highlight_key_triggered(QAction *arg1);
 
     void on_pushButton_manule_save_clicked();
 
@@ -128,6 +130,8 @@ private slots:
     void on_pushButton_set_default_clicked();
 
     void on_toolButton_expand_config_serial_clicked();
+
+    void on_toolButton_highlight_key_clicked();
 
 private:
     Ui::SerialPortTool *ui;

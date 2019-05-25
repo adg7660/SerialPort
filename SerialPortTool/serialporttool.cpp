@@ -468,6 +468,18 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
 
     //高亮接收窗口鼠标所在行
     connect(ui->textEdit_recv, SIGNAL(cursorPositionChanged()), this, SLOT(onCurrentLineHighLight()));
+    this->highlight = new Highlighter(ui->textEdit_recv->document());
+
+    this->config_file->beginGroup("highlight_keyword");
+    QStringList kw_list =  this->config_file->childKeys();
+    char *p_str = nullptr;
+    foreach(QString key, kw_list)
+    {
+        p_str = this->config_file->value(key).toString().toLocal8Bit().data();
+        this->keyword_list << p_str;
+    }
+    this->config_file->endGroup();
+    this->highlight->setTextQueue(this->keyword_list);
 }
 
 void SerialPortTool::setCmdList()
@@ -800,13 +812,6 @@ void SerialPortTool::on_checkBox_autosave_stateChanged(int arg1)
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 }
 
-void SerialPortTool::on_toolButton_highlight_key_triggered(QAction *arg1)
-{
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_toolButton_highlight_key_triggered\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-}
-
 void SerialPortTool::on_pushButton_manule_save_clicked()
 {
     ui->textEdit_recv->moveCursor(QTextCursor::End);
@@ -1056,4 +1061,50 @@ void SerialPortTool::on_toolButton_expand_config_serial_clicked()
     }
 
     ui->splitter_serial_config->setSizes(list);
+}
+
+void SerialPortTool::on_toolButton_highlight_key_clicked()
+{
+    char default_str[512];
+    char str[32];
+    char *p_str = nullptr;
+    uint8_t count = 0;
+
+    this->config_file->beginGroup("highlight_keyword");
+    count = 0;
+    memset(default_str, 0, sizeof(default_str));
+
+    QStringList kw_list =  this->config_file->childKeys();
+    foreach(QString key, kw_list)
+    {
+        p_str = this->config_file->value(key).toString().toLocal8Bit().data();
+        strcat_s(default_str, p_str);
+        strcat_s(default_str, "\r\n");
+    }
+    this->config_file->endGroup();
+
+    bool ok = false;
+    QString text = QInputDialog::getMultiLineText(this, tr("请输入需要高亮的关键字分行输入"),
+                        tr("高亮关键字列表:"), default_str, &ok);
+    if(ok)
+    {
+        this->keyword_list.clear();
+        this->config_file->remove("highlight_keyword");
+        this->config_file->beginGroup("highlight_keyword");
+
+        QStringList list = text.split("\n");
+        count = 0;
+        foreach(QString key, list)
+        {
+            if(!key.isEmpty())
+            {
+                this->keyword_list << key;
+                sprintf(str, "kw%d", count++);
+                this->config_file->setValue(str, key);
+            }
+        }
+
+        this->config_file->endGroup();
+        this->highlight->setTextQueue(this->keyword_list);
+    }
 }
