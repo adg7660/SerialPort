@@ -45,12 +45,16 @@ public:
     uint8_t hex_send_flag = 0;
     uint8_t hex_recv_flag = 0;
     uint8_t serial_open_flag = 0;
+    bool auto_save_recv_flag = false;
     QString demoName;
 
     QString config_file_name;
     QSettings *config_file;
     Highlighter *highlight;
     QStringList keyword_list;
+    QFile *auto_save_recv_file;
+
+    QMutex recv_textEdit_mutex;
 
     void setCmdList();
     bool open_serial();
@@ -61,6 +65,7 @@ public:
 
     void set_config_file_default();
     void set_config_cmd_list();
+    void ReadCmdList();
 
 private slots:
     void on_comboBox_baudrate_list_activated(const QString &arg1);

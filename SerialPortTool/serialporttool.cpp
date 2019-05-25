@@ -238,15 +238,27 @@ void SerialPortTool::ReadData()
         //为了保证中文的完整接收，此次不能简单判断是否为空。
         if(buf.endsWith("\r\n"))//!buf.isEmpty())
         {
-            str = QString::fromLocal8Bit(buf);
+            this->recv_textEdit_mutex.lock();
+            ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-#if 1
-            ui->textEdit_recv->moveCursor(QTextCursor::End);
+            if(this->display_time_flag)
+            {
+                QDateTime dateTime = QDateTime::currentDateTime();
+                ui->textEdit_recv->insertPlainText("["+dateTime.toString("yyyy-MM-dd hh:mm:ss.zzz")+"]<<<");
+            }
+
+            str = QString::fromLocal8Bit(buf);
             ui->textEdit_recv->insertPlainText(str);
+
             ui->textEdit_recv->moveCursor(QTextCursor::End);
-#else
-            qDebug()<<"-->"<<str;
-#endif
+            this->recv_textEdit_mutex.unlock();
+
+            if(this->auto_save_recv_flag)
+            {
+                this->auto_save_recv_file->write(str.toUtf8());
+                this->auto_save_recv_file->flush();
+            }
+
             buf.clear();
             str.clear();
         }
@@ -430,12 +442,48 @@ void SerialPortTool::onCurrentLineHighLight()
     edit->setExtraSelections(extraSelection);
 }
 
+void SerialPortTool::ReadCmdList()
+{
+    QWidget *widget;
+    int r = 0, c = 0;
+    char str[32];
+
+    for(r=1; r<101; r++)
+    {
+        c = 0;
+
+        sprintf(str, "cmd_str_%03d", r-1);
+        this->config_file->beginGroup(str);
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QCheckBox *checkBox = (QCheckBox*)widget;
+        checkBox->setChecked(this->config_file->value("hex").toBool());
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit1 = (QLineEdit*)widget;
+        lineEdit1->setText(this->config_file->value("cmd_str").toString());
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        MyPushButton *pushButton = (MyPushButton*)widget;
+        pushButton->setText(this->config_file->value("btn_name").toString());
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit2 = (QLineEdit*)widget;
+        lineEdit2->setText(this->config_file->value("ser").toString());
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit3 = (QLineEdit*)widget;
+        lineEdit3->setText(this->config_file->value("delay").toString());
+
+        this->config_file->endGroup();
+    }
+}
+
 SerialPortTool::SerialPortTool(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::SerialPortTool)
 {
     ui->setupUi(this);
-
     this->setCmdList();
 
     QList<int> list;
@@ -462,9 +510,26 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
 
     this->config_file_name = QCoreApplication::applicationDirPath();
     this->config_file_name += "./config.ini";
-
     this->config_file = new QSettings(this->config_file_name, QSettings::IniFormat);
     this->config_file->setIniCodec("UTF8");
+
+    uint8_t init_config_flag = 0;
+    this->config_file->beginGroup("Config.ini");
+    QStringList config = this->config_file->childKeys();
+    if(!config.empty())
+    {
+        init_config_flag = 1;
+    }
+    this->config_file->endGroup();
+
+    if(init_config_flag)
+    {
+        this->ReadCmdList();
+    }
+    else
+    {
+        this->set_config_file_default();
+    }
 
     //高亮接收窗口鼠标所在行
     connect(ui->textEdit_recv, SIGNAL(cursorPositionChanged()), this, SLOT(onCurrentLineHighLight()));
@@ -530,17 +595,9 @@ void SerialPortTool::setCmdList()
             {
                 case 0:
                     {
-#if 0
-                        QComboBox *comBox = new QComboBox();
-                        comBox->addItem("abc");
-                        comBox->addItem("123");
-
-                        ui->tableWidget_cmd_list->setCellWidget(r, c, comBox);
-#else
                         QCheckBox *checkBox = new QCheckBox();
 
                         ui->tableWidget_cmd_list->setCellWidget(r, c, checkBox);
-#endif
                     }
                     break;
 
@@ -548,8 +605,15 @@ void SerialPortTool::setCmdList()
                     {
                         QLineEdit *lineEdit = new QLineEdit();
 
-                        sprintf(str, "line_%03d", r);
-                        lineEdit->setText(str);
+                        if(r < 4)
+                        {
+                            sprintf(str, "test cmd demo %d", r-1);
+                            lineEdit->setText(str);
+                        }
+                        else
+                        {
+                            lineEdit->setText("");
+                        }
 
                         ui->tableWidget_cmd_list->setCellWidget(r, c, lineEdit);
                     }
@@ -572,8 +636,15 @@ void SerialPortTool::setCmdList()
                     {
                         QLineEdit *lineEdit = new QLineEdit();
 
-                        sprintf(str, "%0d", r);
-                        lineEdit->setText(str);
+                        if(r < 4)
+                        {
+                            sprintf(str, "%d", r-1);
+                            lineEdit->setText(str);
+                        }
+                        else
+                        {
+                            lineEdit->setText("");
+                        }
 
                         ui->tableWidget_cmd_list->setCellWidget(r, c, lineEdit);
                     }
@@ -706,6 +777,13 @@ void SerialPortTool::on_comboBox_baudrate_list_activated(const QString &arg1)
     ui->textEdit_recv->moveCursor(QTextCursor::End);
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(this->serial_open_flag != 0)
+    {
+        this->serial_open_flag = 0;
+        ui->pushButton_open_serial->setText("打开串口");
+        this->close_serial();
+    }
 }
 
 void SerialPortTool::on_comboBox_data_bit_list_activated(const QString &arg1)
@@ -716,6 +794,13 @@ void SerialPortTool::on_comboBox_data_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->moveCursor(QTextCursor::End);
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(this->serial_open_flag != 0)
+    {
+        this->serial_open_flag = 0;
+        ui->pushButton_open_serial->setText("打开串口");
+        this->close_serial();
+    }
 }
 
 void SerialPortTool::on_comboBox_stop_bit_list_activated(const QString &arg1)
@@ -726,6 +811,13 @@ void SerialPortTool::on_comboBox_stop_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->moveCursor(QTextCursor::End);
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(this->serial_open_flag != 0)
+    {
+        this->serial_open_flag = 0;
+        ui->pushButton_open_serial->setText("打开串口");
+        this->close_serial();
+    }
 }
 
 void SerialPortTool::on_comboBox_check_bit_list_activated(const QString &arg1)
@@ -736,6 +828,13 @@ void SerialPortTool::on_comboBox_check_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->moveCursor(QTextCursor::End);
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(this->serial_open_flag != 0)
+    {
+        this->serial_open_flag = 0;
+        ui->pushButton_open_serial->setText("打开串口");
+        this->close_serial();
+    }
 }
 
 void SerialPortTool::on_comboBox_flow_control_list_activated(const QString &arg1)
@@ -746,6 +845,13 @@ void SerialPortTool::on_comboBox_flow_control_list_activated(const QString &arg1
     ui->textEdit_recv->moveCursor(QTextCursor::End);
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(this->serial_open_flag != 0)
+    {
+        this->serial_open_flag = 0;
+        ui->pushButton_open_serial->setText("打开串口");
+        this->close_serial();
+    }
 }
 
 void SerialPortTool::on_pushButton_open_serial_clicked()
@@ -804,19 +910,56 @@ void SerialPortTool::on_checkBox_dtr_stateChanged(int arg1)
 
 void SerialPortTool::on_checkBox_autosave_stateChanged(int arg1)
 {
-    char buf[64];
+    char default_str[64];
+    bool ok = false;
 
-    sprintf(buf, "on_checkBox_autosave_stateChanged %d\r\n", arg1);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText(buf);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    QDateTime dateTime = QDateTime::currentDateTime();
+    sprintf(default_str, "AutoSave-%s-%s.txt", ui->comboBox_com_list->currentText().toLocal8Bit().data(),
+            dateTime.toString("yyyy-MM-dd_hh-mm-ss").toLocal8Bit().data());
+
+    if(arg1 == 2)
+    {
+        QString text = QInputDialog::getText(this, tr("自动保存接收信息"),
+                            tr("文件名:"), QLineEdit::Normal, default_str, &ok);
+        this->auto_save_recv_file = new QFile("./"+text);
+        if(ok && !text.isEmpty())
+        {
+            this->auto_save_recv_file->open(QIODevice::WriteOnly/* | QIODevice::Text*/);
+            //this->auto_save_recv_file->write(txt.toUtf8());
+        }
+
+        this->auto_save_recv_flag = true;
+    }
+    else
+    {
+        this->auto_save_recv_flag = false;
+
+        this->auto_save_recv_file->close();
+    }
 }
 
 void SerialPortTool::on_pushButton_manule_save_clicked()
 {
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_pushButton_manule_save_clicked\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    char default_str[64];
+    bool ok = false;
+
+    QDateTime dateTime = QDateTime::currentDateTime();
+    sprintf(default_str, "ManuleSave-%s-%s.txt", ui->comboBox_com_list->currentText().toLocal8Bit().data(),
+            dateTime.toString("yyyy-MM-dd_hh-mm-ss").toLocal8Bit().data());
+    QString text = QInputDialog::getText(this, tr("保存接收窗口信息"),
+                        tr("文件名:"), QLineEdit::Normal, default_str, &ok);
+    if(ok && !text.isEmpty())
+    {
+        this->recv_textEdit_mutex.lock();
+
+        QString txt = ui->textEdit_recv->toPlainText();
+        QFile file("./"+text);
+        file.open(QIODevice::WriteOnly | QIODevice::Text);
+        file.write(txt.toUtf8());
+        file.close();
+
+        this->recv_textEdit_mutex.unlock();
+    }
 }
 
 void SerialPortTool::on_pushButton_open_log_doc_clicked()
