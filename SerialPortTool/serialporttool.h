@@ -107,12 +107,6 @@ private slots:
 
     void on_comboBox_send_check_func_list_activated(const QString &arg1);
 
-    void on_comboBox_send_file_currentIndexChanged(int index);
-
-    void on_comboBox_send_protocol_currentIndexChanged(int index);
-
-    void on_pushButton_send_file_clicked();
-
     void on_checkBox_crlf_stateChanged(int arg1);
 
     void on_checkBox_timestamp_stateChanged(int arg1);
@@ -150,6 +144,21 @@ private slots:
     void on_toolButton_highlight_key_clicked();
 
     void on_checkBox_window_top_stateChanged(int arg1);
+
+    void on_comboBox_send_protocol_currentTextChanged(const QString &arg1);
+
+    void on_comboBox_send_file_currentTextChanged(const QString &arg1);
+
+    void on_pushButton_send_file_clicked();
+
+    void on_comboBox_recv_directory_currentTextChanged(const QString &arg1);
+
+    void on_pushButton_recv_file_clicked();
+
+    void transmitProgress(int progress);
+    void receiveProgress(int progress);
+    void transmitStatus(YmodemFileTransmit::Status status);
+    void receiveStatus(YmodemFileReceive::Status status);
 
 private:
     Ui::SerialPortTool *ui;

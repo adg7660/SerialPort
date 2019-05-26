@@ -531,9 +531,12 @@ void SerialPortTool::ReadCmdList()
 
 SerialPortTool::SerialPortTool(QWidget *parent) :
     QMainWindow(parent),
-    ui(new Ui::SerialPortTool)
+    ui(new Ui::SerialPortTool),
+    ymodemFileTransmit(new YmodemFileTransmit),
+    ymodemFileReceive(new YmodemFileReceive)
 {
     ui->setupUi(this);
+    this->resize(QSize( 1150, 750 ));
     this->setCmdList();
 
     QList<int> list;
@@ -610,6 +613,15 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     this->qProgressBar->setMinimumSize(256, 20);
     this->qProgressBar->setMaximumSize(256, 20);
     ui->statusBar->addPermanentWidget(this->qProgressBar);
+
+    ui->comboBox_send_protocol->addItem("ymodem");
+
+    this->transmitButtonStatus = false;
+    this->receiveButtonStatus  = false;
+    connect(ymodemFileTransmit, SIGNAL(transmitProgress(int)), this, SLOT(transmitProgress(int)));
+    connect(ymodemFileReceive, SIGNAL(receiveProgress(int)), this, SLOT(receiveProgress(int)));
+    connect(ymodemFileTransmit, SIGNAL(transmitStatus(YmodemFileTransmit::Status)), this, SLOT(transmitStatus(YmodemFileTransmit::Status)));
+    connect(ymodemFileReceive, SIGNAL(receiveStatus(YmodemFileReceive::Status)), this, SLOT(receiveStatus(YmodemFileReceive::Status)));
 }
 
 SerialPortTool::~SerialPortTool()
@@ -1082,33 +1094,6 @@ void SerialPortTool::on_comboBox_send_check_func_list_activated(const QString &a
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 }
 
-void SerialPortTool::on_comboBox_send_file_currentIndexChanged(int index)
-{
-    char buf[64];
-
-    sprintf(buf, "on_comboBox_send_file_currentIndexChanged %d\r\n", index);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText(buf);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-}
-
-void SerialPortTool::on_comboBox_send_protocol_currentIndexChanged(int index)
-{
-    char buf[64];
-
-    sprintf(buf, "on_comboBox_send_protocol_currentIndexChanged %d\r\n", index);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText(buf);
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-}
-
-void SerialPortTool::on_pushButton_send_file_clicked()
-{
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-    ui->textEdit_recv->insertPlainText("on_pushButton_send_file_clicked\r\n");
-    ui->textEdit_recv->moveCursor(QTextCursor::End);
-}
-
 void SerialPortTool::on_checkBox_crlf_stateChanged(int arg1)
 {
     char buf[64];
@@ -1355,4 +1340,380 @@ void SerialPortTool::on_checkBox_window_top_stateChanged(int arg1)
     }
 
     this->show();
+}
+
+void SerialPortTool::on_comboBox_send_protocol_currentTextChanged(const QString &arg1)
+{
+    char buf[512];
+
+    sprintf(buf, "已选择传输协议: %s\r\n", arg1.toUtf8().data());
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    ui->textEdit_recv->insertPlainText(buf);
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+}
+
+void SerialPortTool::on_comboBox_send_file_currentTextChanged(const QString &arg1)
+{
+    QString file;
+
+    if(strcmp(arg1.toUtf8().data(), "...") == 0)
+    {
+        file = QFileDialog::getOpenFileName(this, u8"打开文件", ".", u8"任意文件 (*.*)");
+        if(!file.isEmpty())
+        {
+            ui->comboBox_send_file->addItem(file);
+            ui->comboBox_send_file->setCurrentText(file);
+            ui->comboBox_send_file->setToolTip(file);
+        }
+        else
+        {
+            ui->comboBox_send_file->setCurrentIndex(0);
+            ui->comboBox_send_file->setToolTip(ui->comboBox_send_file->currentText());
+        }
+    }
+    else
+    {
+        ui->comboBox_send_file->setToolTip(arg1);
+    }
+}
+
+void SerialPortTool::on_pushButton_send_file_clicked()
+{
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    ui->textEdit_recv->insertPlainText("开始发送文件:" + ui->comboBox_send_file->currentText() + "\r\n");
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(!this->serial_open_flag)
+    {
+        QMessageBox::warning(this, "警告", "请打开对应的串口！！！");
+        return;
+    }
+
+    if(ui->comboBox_send_protocol->currentIndex() == 0)
+    {
+        QMessageBox::warning(this, "警告", "请选择传输协议！！！");
+    }
+    else if(strcmp(ui->comboBox_send_protocol->currentText().toLocal8Bit().data(), "ymodem") == 0)
+    {
+        if(transmitButtonStatus == false)
+        {
+            serialPort->close();
+
+            ymodemFileTransmit->setFileName(ui->comboBox_send_file->currentText());
+            ymodemFileTransmit->setPortName(ui->comboBox_com_list->currentText());
+            ymodemFileTransmit->setPortBaudRate(ui->comboBox_baudrate_list->currentText().toInt());
+
+            if(ymodemFileTransmit->startTransmit() == true)
+            {
+                transmitButtonStatus = true;
+
+                //ui->comButton->setDisabled(true);
+
+                //ui->receiveBrowse->setDisabled(true);
+                //ui->receiveButton->setDisabled(true);
+
+                //ui->transmitBrowse->setDisabled(true);
+                ui->pushButton_send_file->setText(u8"发送取消");
+                this->qProgressBar->setValue(0);
+            }
+            else
+            {
+                QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
+            }
+        }
+        else
+        {
+            ymodemFileTransmit->stopTransmit();
+        }
+    }
+    else
+    {
+        QMessageBox::warning(this, "警告", "未定义的传输协议！！！");
+    }
+}
+
+void SerialPortTool::on_comboBox_recv_directory_currentTextChanged(const QString &arg1)
+{
+    QString directory;
+
+    if(strcmp(arg1.toUtf8().data(), "...") == 0)
+    {
+        directory = QFileDialog::getExistingDirectory(this, u8"选择目录", ".", QFileDialog::ShowDirsOnly);
+        if(!directory.isEmpty())
+        {
+            ui->comboBox_recv_directory->addItem(directory);
+            ui->comboBox_recv_directory->setCurrentText(directory);
+            ui->comboBox_recv_directory->setToolTip(directory);
+        }
+        else
+        {
+            ui->comboBox_recv_directory->setCurrentIndex(0);
+            ui->comboBox_recv_directory->setToolTip(ui->comboBox_recv_directory->currentText());
+        }
+    }
+    else
+    {
+        ui->comboBox_recv_directory->setToolTip(arg1);
+    }
+}
+
+void SerialPortTool::on_pushButton_recv_file_clicked()
+{
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    ui->textEdit_recv->insertPlainText("开始接收文件:" + ui->comboBox_recv_directory->currentText() + "\r\n");
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+
+    if(!this->serial_open_flag)
+    {
+        QMessageBox::warning(this, "警告", "请打开对应的串口！！！");
+        return;
+    }
+
+    if(ui->comboBox_send_protocol->currentIndex() == 0)
+    {
+        QMessageBox::warning(this, "警告", "请选择传输协议！！！");
+    }
+    else if(strcmp(ui->comboBox_send_protocol->currentText().toLocal8Bit().data(), "ymodem") == 0)
+    {
+        if(receiveButtonStatus == false)
+        {
+            serialPort->close();
+
+            ymodemFileReceive->setFilePath(ui->comboBox_recv_directory->currentText());
+            ymodemFileReceive->setPortName(ui->comboBox_com_list->currentText());
+            ymodemFileReceive->setPortBaudRate(ui->comboBox_baudrate_list->currentText().toInt());
+
+            if(ymodemFileReceive->startReceive() == true)
+            {
+                receiveButtonStatus = true;
+
+                //ui->comButton->setDisabled(true);
+
+                //ui->transmitBrowse->setDisabled(true);
+                //ui->transmitButton->setDisabled(true);
+
+                //ui->receiveBrowse->setDisabled(true);
+                ui->pushButton_recv_file->setText(u8"接收取消");
+                this->qProgressBar->setValue(0);
+            }
+            else
+            {
+                QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+            }
+        }
+        else
+        {
+            ymodemFileReceive->stopReceive();
+        }
+    }
+    else
+    {
+        QMessageBox::warning(this, "警告", "未定义的传输协议！！！");
+    }
+}
+
+void SerialPortTool::transmitProgress(int progress)
+{
+    this->qProgressBar->setValue(progress);
+}
+
+void SerialPortTool::receiveProgress(int progress)
+{
+    this->qProgressBar->setValue(progress);
+}
+
+void SerialPortTool::transmitStatus(Ymodem::Status status)
+{
+    switch(status)
+    {
+        case YmodemFileTransmit::StatusEstablish:
+        {
+            break;
+        }
+
+        case YmodemFileTransmit::StatusTransmit:
+        {
+            break;
+        }
+
+        case YmodemFileTransmit::StatusFinish:
+        {
+            transmitButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->receiveBrowse->setEnabled(true);
+
+            //if(ui->receivePath->text().isEmpty() != true)
+            {
+                //ui->receiveButton->setEnabled(true);
+            }
+
+            //ui->transmitBrowse->setEnabled(true);
+            ui->pushButton_send_file->setText(u8"发送文件");
+
+            QMessageBox::warning(this, u8"成功", u8"文件发送成功！", u8"关闭");
+
+            break;
+        }
+
+        case YmodemFileTransmit::StatusAbort:
+        {
+            transmitButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->receiveBrowse->setEnabled(true);
+
+            //if(ui->receivePath->text().isEmpty() != true)
+            {
+                //ui->receiveButton->setEnabled(true);
+            }
+
+            //ui->transmitBrowse->setEnabled(true);
+            ui->pushButton_send_file->setText(u8"发送文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
+
+            break;
+        }
+
+        case YmodemFileTransmit::StatusTimeout:
+        {
+            transmitButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->receiveBrowse->setEnabled(true);
+
+            //if(ui->receivePath->text().isEmpty() != true)
+            {
+                //ui->receiveButton->setEnabled(true);
+            }
+
+            //ui->transmitBrowse->setEnabled(true);
+            ui->pushButton_send_file->setText(u8"发送文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
+
+            break;
+        }
+
+        default:
+        {
+            transmitButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->receiveBrowse->setEnabled(true);
+
+            //if(ui->receivePath->text().isEmpty() != true)
+            {
+                //ui->receiveButton->setEnabled(true);
+            }
+
+            //ui->transmitBrowse->setEnabled(true);
+            ui->pushButton_send_file->setText(u8"发送文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件发送失败！", u8"关闭");
+        }
+    }
+}
+
+void SerialPortTool::receiveStatus(YmodemFileReceive::Status status)
+{
+    switch(status)
+    {
+        case YmodemFileReceive::StatusEstablish:
+        {
+            break;
+        }
+
+        case YmodemFileReceive::StatusTransmit:
+        {
+            break;
+        }
+
+        case YmodemFileReceive::StatusFinish:
+        {
+            receiveButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->transmitBrowse->setEnabled(true);
+
+            //if(ui->transmitPath->text().isEmpty() != true)
+            {
+                //ui->transmitButton->setEnabled(true);
+            }
+
+            //ui->receiveBrowse->setEnabled(true);
+            ui->pushButton_recv_file->setText(u8"接收文件");
+
+            QMessageBox::warning(this, u8"成功", u8"文件接收成功！", u8"关闭");
+
+            break;
+        }
+
+        case YmodemFileReceive::StatusAbort:
+        {
+            receiveButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+           // ui->transmitBrowse->setEnabled(true);
+
+            //if(ui->transmitPath->text().isEmpty() != true)
+            {
+                //ui->transmitButton->setEnabled(true);
+            }
+
+            //ui->receiveBrowse->setEnabled(true);
+            ui->pushButton_recv_file->setText(u8"接收文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+
+            break;
+        }
+
+        case YmodemFileReceive::StatusTimeout:
+        {
+            receiveButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->transmitBrowse->setEnabled(true);
+
+            //if(ui->transmitPath->text().isEmpty() != true)
+            {
+                //ui->transmitButton->setEnabled(true);
+            }
+
+            //ui->receiveBrowse->setEnabled(true);
+            ui->pushButton_recv_file->setText(u8"接收文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+
+            break;
+        }
+
+        default:
+        {
+            receiveButtonStatus = false;
+
+            //ui->comButton->setEnabled(true);
+
+            //ui->transmitBrowse->setEnabled(true);
+
+            //if(ui->transmitPath->text().isEmpty() != true)
+            {
+                //ui->transmitButton->setEnabled(true);
+            }
+
+            //ui->receiveBrowse->setEnabled(true);
+            ui->pushButton_recv_file->setText(u8"接收文件");
+
+            QMessageBox::warning(this, u8"失败", u8"文件接收失败！", u8"关闭");
+        }
+    }
 }

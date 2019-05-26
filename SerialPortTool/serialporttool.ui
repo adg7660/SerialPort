@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1193</width>
+    <width>1535</width>
     <height>751</height>
    </rect>
   </property>
@@ -542,20 +542,18 @@
            <widget class="QTextEdit" name="textEdit_recv"/>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="6,6,1,6,1,0">
+           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="2,6,1,6,1,0">
             <property name="spacing">
              <number>2</number>
+            </property>
+            <property name="sizeConstraint">
+             <enum>QLayout::SetDefaultConstraint</enum>
             </property>
             <item>
              <widget class="QComboBox" name="comboBox_send_protocol">
               <item>
                <property name="text">
                 <string>请选择传输协议...</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>...</string>
                </property>
               </item>
              </widget>
@@ -1169,7 +1167,7 @@ p, li { white-space: pre-wrap; }
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1193</width>
+     <width>1535</width>
      <height>26</height>
     </rect>
    </property>
