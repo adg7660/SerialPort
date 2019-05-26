@@ -542,15 +542,15 @@
            <widget class="QTextEdit" name="textEdit_recv"/>
           </item>
           <item>
-           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="6,2,1,0">
+           <layout class="QHBoxLayout" name="horizontalLayout_16" stretch="6,6,1,6,1,0">
             <property name="spacing">
              <number>2</number>
             </property>
             <item>
-             <widget class="QComboBox" name="comboBox_send_file">
+             <widget class="QComboBox" name="comboBox_send_protocol">
               <item>
                <property name="text">
-                <string>请选择要传送的文件...</string>
+                <string>请选择传输协议...</string>
                </property>
               </item>
               <item>
@@ -561,10 +561,10 @@
              </widget>
             </item>
             <item>
-             <widget class="QComboBox" name="comboBox_send_protocol">
+             <widget class="QComboBox" name="comboBox_send_file">
               <item>
                <property name="text">
-                <string>请选择传输协议...</string>
+                <string>请选择要传送的文件...</string>
                </property>
               </item>
               <item>
@@ -582,7 +582,28 @@
              </widget>
             </item>
             <item>
-             <widget class="QCheckBox" name="checkBox">
+             <widget class="QComboBox" name="comboBox_recv_directory">
+              <item>
+               <property name="text">
+                <string>请选择接收文件要存放的目录...</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>...</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item>
+             <widget class="QPushButton" name="pushButton_recv_file">
+              <property name="text">
+               <string>开始接收</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QCheckBox" name="checkBox_window_top">
               <property name="text">
                <string>置前</string>
               </property>

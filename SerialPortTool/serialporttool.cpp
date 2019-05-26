@@ -3,116 +3,140 @@
 
 #pragma execution_character_set("utf-8")
 
+MyPushButton::MyPushButton(QWidget *parent) :
+    QPushButton(parent)
+{
+
+}
+
+void MyPushButton::mouseReleaseEvent(QMouseEvent *e)
+{
+    if (Qt::LeftButton == e->button())
+    {
+        emit leftButtonClicked();
+    }
+    else if (Qt::RightButton == e->button())
+    {
+        emit rightButtonClicked();
+    }
+}
+
+MyPushButton::~MyPushButton()
+{
+    //delete ui;
+}
+
 bool SerialPortTool::open_serial()
 {
-    this->serial = new QSerialPort;
-    this->serial->setPortName(ui->comboBox_com_list->currentText());
-    if(!this->serial->open(QIODevice::ReadWrite))
+    this->serialPort = new QSerialPort;
+    this->serialPort->setPortName(ui->comboBox_com_list->currentText());
+    if(!this->serialPort->open(QIODevice::ReadWrite))
     {
         return false;
     }
 
 #if 1
-    this->serial->setBaudRate(ui->comboBox_baudrate_list->currentText().toInt());
+    this->serialPort->setBaudRate(ui->comboBox_baudrate_list->currentText().toInt());
 
     switch(ui->comboBox_data_bit_list->currentIndex())
     {
         case 0:
-            this->serial->setDataBits(QSerialPort::Data5);
+            this->serialPort->setDataBits(QSerialPort::Data5);
             break;
 
         case 1:
-            this->serial->setDataBits(QSerialPort::Data6);
+            this->serialPort->setDataBits(QSerialPort::Data6);
             break;
 
         case 2:
-            this->serial->setDataBits(QSerialPort::Data7);
+            this->serialPort->setDataBits(QSerialPort::Data7);
             break;
 
         case 3:
         default:
-            this->serial->setDataBits(QSerialPort::Data8);
+            this->serialPort->setDataBits(QSerialPort::Data8);
     }
 
     switch(ui->comboBox_check_bit_list->currentIndex())
     {
         case 0:
-            this->serial->setParity(QSerialPort::NoParity);
+            this->serialPort->setParity(QSerialPort::NoParity);
             break;
 
         case 1:
-            this->serial->setParity(QSerialPort::OddParity);
+            this->serialPort->setParity(QSerialPort::OddParity);
             break;
 
         case 2:
-            this->serial->setParity(QSerialPort::EvenParity);
+            this->serialPort->setParity(QSerialPort::EvenParity);
             break;
 
         case 3:
-            this->serial->setParity(QSerialPort::SpaceParity);
+            this->serialPort->setParity(QSerialPort::SpaceParity);
             break;
 
         case 4:
-            this->serial->setParity(QSerialPort::MarkParity);
+            this->serialPort->setParity(QSerialPort::MarkParity);
             break;
 
         default:
-            this->serial->setParity(QSerialPort::NoParity);
+            this->serialPort->setParity(QSerialPort::NoParity);
     }
 
     switch(ui->comboBox_stop_bit_list->currentIndex())
     {
         case 0:
-            this->serial->setStopBits(QSerialPort::OneStop);
+            this->serialPort->setStopBits(QSerialPort::OneStop);
             break;
 
         case 1:
-            this->serial->setStopBits(QSerialPort::OneAndHalfStop);
+            this->serialPort->setStopBits(QSerialPort::OneAndHalfStop);
             break;
 
         case 2:
-            this->serial->setStopBits(QSerialPort::TwoStop);
+            this->serialPort->setStopBits(QSerialPort::TwoStop);
             break;
 
         default:
-            this->serial->setStopBits(QSerialPort::OneStop);
+            this->serialPort->setStopBits(QSerialPort::OneStop);
     }
 
     switch(ui->comboBox_flow_control_list->currentIndex())
     {
         case 0:
-            this->serial->setFlowControl(QSerialPort::NoFlowControl);
+            this->serialPort->setFlowControl(QSerialPort::NoFlowControl);
             break;
 
         case 1:
-            this->serial->setFlowControl(QSerialPort::HardwareControl);
+            this->serialPort->setFlowControl(QSerialPort::HardwareControl);
             break;
 
         case 2:
-            this->serial->setFlowControl(QSerialPort::SoftwareControl);
+            this->serialPort->setFlowControl(QSerialPort::SoftwareControl);
             break;
 
         default:
-            this->serial->setFlowControl(QSerialPort::NoFlowControl);
+            this->serialPort->setFlowControl(QSerialPort::NoFlowControl);
     }
 #else
 
-    this->serial->setBaudRate(115200);
-    this->serial->setDataBits(QSerialPort::Data8);
-    this->serial->setParity(QSerialPort::NoParity);
-    this->serial->setStopBits(QSerialPort::OneStop);
-    this->serial->setFlowControl(QSerialPort::NoFlowControl);
+    this->serialPort->setBaudRate(115200);
+    this->serialPort->setDataBits(QSerialPort::Data8);
+    this->serialPort->setParity(QSerialPort::NoParity);
+    this->serialPort->setStopBits(QSerialPort::OneStop);
+    this->serialPort->setFlowControl(QSerialPort::NoFlowControl);
 #endif
-    connect(this->serial, &QSerialPort::readyRead, this, &SerialPortTool::ReadData);
+    connect(this->serialPort, &QSerialPort::readyRead, this, &SerialPortTool::ReadData);
 
     return true;
 }
 
 void SerialPortTool::close_serial()
 {
-    this->serial->clear();
-    this->serial->close();
-    this->serial->deleteLater();
+    this->serialPort->clear();
+    this->serialPort->close();
+    this->serialPort->deleteLater();
+    delete this->serialPort;
 }
 
 void SerialPortTool::refresh_serial()
@@ -153,56 +177,63 @@ void SerialPortTool::send_serial(QString str)
 {
     char pstr[32];
 
-    if(this->hex_send_flag == 0)
+    if(this->serial_open_flag)
     {
-        if(this->display_time_flag)
+        if(!this->hex_send_flag)
         {
-            QTime time = QTime::currentTime();
-            this->serial->write(("["+time.toString("hh:mm:ss")+"]>>>").toLocal8Bit());
-        }
-
-        this->serial->write(str.toLocal8Bit());
-
-        if(this->crlf_flag)
-        {
-            this->serial->write("\r\n");
-            this->send_byte_count += str.length()+2;
-        }
-        else
-        {
-            this->send_byte_count += str.length();
-        }
-
-        sprintf(pstr, "Tx:%d", this->send_byte_count);
-        this->label_tx_status->setText(pstr);
-    }
-    else
-    {
-        char hex_data[256];
-        uint16_t index = 0;
-        char *p = str.toUtf8().data();
-        char hb = 0, lb = 0;
-
-        for(int i=0; i<str.length();)
-        {
-            if(p[i] != ' ')
+            if(this->display_time_flag)
             {
-                hb = char_to_hex(p[i]);
-                lb = char_to_hex(p[i]);
-                hex_data[index++] = (hb << 4) | lb;
-                i += 2;
+                QTime time = QTime::currentTime();
+                this->serialPort->write(("["+time.toString("hh:mm:ss")+"]>>>").toLocal8Bit());
+            }
+
+            this->serialPort->write(str.toLocal8Bit());
+
+            if(this->crlf_flag)
+            {
+                this->serialPort->write("\r\n");
+                this->send_byte_count += str.length()+2;
             }
             else
             {
-                i++;
+                this->send_byte_count += str.length();
             }
+
+            sprintf(pstr, "Tx:%d", this->send_byte_count);
+            this->label_tx_status->setText(pstr);
         }
+        else
+        {
+            char hex_data[256];
+            uint16_t index = 0;
+            char *p = str.toUtf8().data();
+            char hb = 0, lb = 0;
 
-        this->serial->write(hex_data);
+            for(int i=0; i<str.length();)
+            {
+                if(p[i] != ' ')
+                {
+                    hb = char_to_hex(p[i]);
+                    lb = char_to_hex(p[i]);
+                    hex_data[index++] = (hb << 4) | lb;
+                    i += 2;
+                }
+                else
+                {
+                    i++;
+                }
+            }
 
-        this->send_byte_count += str.length();
-        sprintf(pstr, "Tx:%d", this->send_byte_count);
-        this->label_tx_status->setText(pstr);
+            this->serialPort->write(hex_data);
+
+            this->send_byte_count += str.length();
+            sprintf(pstr, "Tx:%d", this->send_byte_count);
+            this->label_tx_status->setText(pstr);
+        }
+    }
+    else
+    {
+        QMessageBox::warning(this, "警告", "请打开对应的串口！！！");
     }
 }
 
@@ -245,9 +276,9 @@ void SerialPortTool::ReadData()
     static QByteArray buf;
     QString str;
 
-    buf += this->serial->readAll();
+    buf += this->serialPort->readAll();
 
-    if(this->hex_recv_flag == 0)
+    if(!this->hex_recv_flag)
     {
         //为了保证中文的完整接收，此次不能简单判断是否为空。
         if(buf.endsWith("\r\n"))//!buf.isEmpty())
@@ -352,7 +383,7 @@ void SerialPortTool::set_config_file_default()
     this->config_file->setValue("Note","非专业人员请勿乱动此文件！！！");
     this->config_file->endGroup();
 
-    for(r=0; r<100; r++)
+    for(r=0; r<CMD_LIST_ROW; r++)
     {
         c = 0;
 
@@ -416,7 +447,7 @@ void SerialPortTool::set_config_cmd_list()
     int r = 0, c = 0;
     char str[32];
 
-    for(r=1; r<101; r++)
+    for(r=1; r<(CMD_LIST_ROW+1); r++)
     {
         c = 0;
         widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
@@ -467,7 +498,7 @@ void SerialPortTool::ReadCmdList()
     int r = 0, c = 0;
     char str[32];
 
-    for(r=1; r<101; r++)
+    for(r=1; r<(CMD_LIST_ROW+1); r++)
     {
         c = 0;
 
@@ -581,6 +612,58 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     ui->statusBar->addPermanentWidget(this->qProgressBar);
 }
 
+SerialPortTool::~SerialPortTool()
+{
+    QWidget *widget;
+    int r = 0, c = 0;
+
+    delete ui;
+
+    for(r=1; r<(CMD_LIST_ROW+1); r++)
+    {
+        c = 0;
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QCheckBox *checkBox = (QCheckBox*)widget;
+        delete checkBox;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit1 = (QLineEdit*)widget;
+        delete lineEdit1;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        MyPushButton *pushButton = (MyPushButton*)widget;
+        delete pushButton;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit2 = (QLineEdit*)widget;
+        delete lineEdit2;
+
+        widget = ui->tableWidget_cmd_list->cellWidget(r, c++);
+        QLineEdit *lineEdit3 = (QLineEdit*)widget;
+        delete lineEdit3;
+    }
+
+    delete timer;
+    delete config_file;
+    delete highlight;
+    delete qProgressBar;
+    delete label_tx_status;
+    delete label_rx_status;
+
+    if(auto_save_recv_file != nullptr)
+    {
+        delete auto_save_recv_file;
+    }
+
+    if(serialPort != nullptr)
+    {
+        delete serialPort;
+    }
+
+    //delete ymodemFileTransmit;
+    //delete ymodemFileReceive;
+}
+
 void SerialPortTool::setCmdList()
 {
     ui->tableWidget_cmd_list->verticalHeader()->setVisible(false);
@@ -588,9 +671,9 @@ void SerialPortTool::setCmdList()
     ui->tableWidget_cmd_list->setShowGrid(false);
 
     char str[32];
-    for(int r=0; r<101; r++)
+    for(int r=0; r<(CMD_LIST_ROW+1); r++)
     {
-        for(int c=0; c<5; c++)
+        for(int c=0; c<CMD_LIST_COL; c++)
         {
             if(r == 0)
             {
@@ -712,24 +795,6 @@ void SerialPortTool::setCmdList()
     ui->tableWidget_cmd_list->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOff);
 }
 
-MyPushButton::MyPushButton(QWidget *parent) :
-    QPushButton(parent)
-{
-
-}
-
-void MyPushButton::mouseReleaseEvent(QMouseEvent *e)
-{
-    if (Qt::LeftButton == e->button())
-    {
-        emit leftButtonClicked();
-    }
-    else if (Qt::RightButton == e->button())
-    {
-        emit rightButtonClicked();
-    }
-}
-
 void SerialPortTool::OnBtnLeftClicked()
 {
     MyPushButton *senderObj = qobject_cast<MyPushButton*>(sender());
@@ -793,16 +858,6 @@ void SerialPortTool::OnBtnRightClicked()
     }
 }
 
-SerialPortTool::~SerialPortTool()
-{
-    delete ui;
-}
-
-MyPushButton::~MyPushButton()
-{
-    //delete ui;
-}
-
 void SerialPortTool::on_comboBox_baudrate_list_activated(const QString &arg1)
 {
     char buf[64];
@@ -812,9 +867,9 @@ void SerialPortTool::on_comboBox_baudrate_list_activated(const QString &arg1)
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-    if(this->serial_open_flag != 0)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -829,9 +884,9 @@ void SerialPortTool::on_comboBox_data_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-    if(this->serial_open_flag != 0)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -846,9 +901,9 @@ void SerialPortTool::on_comboBox_stop_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-    if(this->serial_open_flag != 0)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -863,9 +918,9 @@ void SerialPortTool::on_comboBox_check_bit_list_activated(const QString &arg1)
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-    if(this->serial_open_flag != 0)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -880,9 +935,9 @@ void SerialPortTool::on_comboBox_flow_control_list_activated(const QString &arg1
     ui->textEdit_recv->insertPlainText(buf);
     ui->textEdit_recv->moveCursor(QTextCursor::End);
 
-    if(this->serial_open_flag != 0)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -890,11 +945,11 @@ void SerialPortTool::on_comboBox_flow_control_list_activated(const QString &arg1
 
 void SerialPortTool::on_pushButton_open_serial_clicked()
 {
-    if(this->serial_open_flag == 0)
+    if(!this->serial_open_flag)
     {
         if(this->open_serial())
         {
-            this->serial_open_flag = 1;
+            this->serial_open_flag = true;
             ui->pushButton_open_serial->setText("关闭串口");
         }
         else
@@ -904,7 +959,7 @@ void SerialPortTool::on_pushButton_open_serial_clicked()
     }
     else
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -912,9 +967,9 @@ void SerialPortTool::on_pushButton_open_serial_clicked()
 
 void SerialPortTool::on_pushButton_refresh_serial_clicked()
 {
-    if(this->serial_open_flag == 1)
+    if(this->serial_open_flag)
     {
-        this->serial_open_flag = 0;
+        this->serial_open_flag = false;
         ui->pushButton_open_serial->setText("打开串口");
         this->close_serial();
     }
@@ -969,6 +1024,7 @@ void SerialPortTool::on_checkBox_autosave_stateChanged(int arg1)
         this->auto_save_recv_flag = false;
 
         this->auto_save_recv_file->close();
+        delete this->auto_save_recv_file;
     }
 }
 
@@ -1064,11 +1120,11 @@ void SerialPortTool::on_checkBox_crlf_stateChanged(int arg1)
 
     if(arg1 == 2)
     {
-        this->crlf_flag = 1;
+        this->crlf_flag = true;
     }
     else
     {
-        this->crlf_flag = 0;
+        this->crlf_flag = false;
     }
 }
 
@@ -1083,11 +1139,11 @@ void SerialPortTool::on_checkBox_timestamp_stateChanged(int arg1)
 
     if(arg1 == 2)
     {
-        this->display_time_flag = 1;
+        this->display_time_flag = true;
     }
     else
     {
-        this->display_time_flag = 0;
+        this->display_time_flag = false;
     }
 }
 
@@ -1102,11 +1158,11 @@ void SerialPortTool::on_checkBox_hex_send_stateChanged(int arg1)
 
     if(arg1 == 2)
     {
-        this->hex_send_flag = 1;
+        this->hex_send_flag = true;
     }
     else
     {
-        this->hex_send_flag = 0;
+        this->hex_send_flag = false;
     }
 }
 
@@ -1121,11 +1177,11 @@ void SerialPortTool::on_checkBox_hex_recv_stateChanged(int arg1)
 
     if(arg1 == 2)
     {
-        this->hex_recv_flag = 1;
+        this->hex_recv_flag = true;
     }
     else
     {
-        this->hex_recv_flag = 0;
+        this->hex_recv_flag = false;
     }
 }
 
@@ -1133,15 +1189,8 @@ void SerialPortTool::on_pushButton_send_str_clicked()
 {
     QString str;
 
-    if(this->serial_open_flag == 1)
-    {
-        str = ui->textEdit_send->toPlainText();
-        this->send_serial(str);
-    }
-    else
-    {
-        QMessageBox::warning(this, "警告", "请打开对应的串口！！！");
-    }
+    str = ui->textEdit_send->toPlainText();
+    this->send_serial(str);
 }
 
 void SerialPortTool::on_pushButton_clear_recv_clicked()
@@ -1294,7 +1343,7 @@ void SerialPortTool::on_toolButton_highlight_key_clicked()
     }
 }
 
-void SerialPortTool::on_checkBox_stateChanged(int arg1)
+void SerialPortTool::on_checkBox_window_top_stateChanged(int arg1)
 {
     if(arg1 == 2)
     {

@@ -31,12 +31,18 @@ SOURCES += \
         main.cpp \
         highlight_keyword/highlight_keyword.cpp \
         qcustomplot/qcustomplot.cpp \
-        serialporttool.cpp
+        serialporttool.cpp \
+        ymodem/Ymodem.cpp \
+        ymodem/YmodemFileReceive.cpp \
+        ymodem/YmodemFileTransmit.cpp
 
 HEADERS += \
         highlight_keyword/highlight_keyword.h \
         qcustomplot/qcustomplot.h \
-        serialporttool.h
+        serialporttool.h \
+        ymodem/Ymodem.h \
+        ymodem/YmodemFileReceive.h \
+        ymodem/YmodemFileTransmit.h
 
 FORMS += \
         serialporttool.ui

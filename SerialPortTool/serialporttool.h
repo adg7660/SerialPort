@@ -24,10 +24,15 @@
 
 #include "qcustomplot/qcustomplot.h"
 #include "highlight_keyword/highlight_keyword.h"
+#include "ymodem/YmodemFileTransmit.h"
+#include "ymodem/YmodemFileReceive.h"
 
 namespace Ui {
 class SerialPortTool;
 }
+
+#define CMD_LIST_ROW    100
+#define CMD_LIST_COL    5
 
 class SerialPortTool : public QMainWindow
 {
@@ -40,26 +45,25 @@ public:
     bool display_cmd_list_flag;
     bool display_data_curve_flag;
     bool display_serial_config_flag;
-    QTimer *timer;
-    QSerialPort *serial;
-    uint8_t crlf_flag = 0;
-    uint8_t display_time_flag = 0;
-    uint8_t hex_send_flag = 0;
-    uint8_t hex_recv_flag = 0;
-    uint8_t serial_open_flag = 0;
+    QTimer *timer = nullptr;
+    bool crlf_flag = false;
+    bool display_time_flag = false;
+    bool hex_send_flag = false;
+    bool hex_recv_flag = false;
+    bool serial_open_flag = false;
     bool auto_save_recv_flag = false;
     QString demoName;
 
     QString config_file_name;
-    QSettings *config_file;
-    Highlighter *highlight;
+    QSettings *config_file = nullptr;
+    Highlighter *highlight = nullptr;
     QStringList keyword_list;
-    QFile *auto_save_recv_file;
+    QFile *auto_save_recv_file = nullptr;
     int recv_byte_count = 0;
     int send_byte_count = 0;
-    QProgressBar *qProgressBar;
-    QLabel *label_tx_status;
-    QLabel *label_rx_status;
+    QProgressBar *qProgressBar = nullptr;
+    QLabel *label_tx_status = nullptr;
+    QLabel *label_rx_status = nullptr;
 
     QMutex recv_textEdit_mutex;
 
@@ -145,10 +149,17 @@ private slots:
 
     void on_toolButton_highlight_key_clicked();
 
-    void on_checkBox_stateChanged(int arg1);
+    void on_checkBox_window_top_stateChanged(int arg1);
 
 private:
     Ui::SerialPortTool *ui;
+
+    QSerialPort *serialPort = nullptr;
+    YmodemFileTransmit *ymodemFileTransmit = nullptr;
+    YmodemFileReceive *ymodemFileReceive = nullptr;
+
+    bool transmitButtonStatus;
+    bool receiveButtonStatus;
 };
 
 class MyPushButton : public QPushButton
