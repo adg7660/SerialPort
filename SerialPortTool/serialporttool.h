@@ -26,6 +26,7 @@
 #include "highlight_keyword/highlight_keyword.h"
 #include "ymodem/YmodemFileTransmit.h"
 #include "ymodem/YmodemFileReceive.h"
+#include "crc/CRC.h"
 
 namespace Ui {
 class SerialPortTool;

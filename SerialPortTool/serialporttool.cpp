@@ -622,6 +622,15 @@ SerialPortTool::SerialPortTool(QWidget *parent) :
     connect(ymodemFileReceive, SIGNAL(receiveProgress(int)), this, SLOT(receiveProgress(int)));
     connect(ymodemFileTransmit, SIGNAL(transmitStatus(YmodemFileTransmit::Status)), this, SLOT(transmitStatus(YmodemFileTransmit::Status)));
     connect(ymodemFileReceive, SIGNAL(receiveStatus(YmodemFileReceive::Status)), this, SLOT(receiveStatus(YmodemFileReceive::Status)));
+
+    //eg:crc
+    const char myString[] = {0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77};
+    uint32_t crc = CRC::Calculate(myString, sizeof(myString), CRC::CRC_16_MODBUS());
+    char str[32];
+    sprintf(str, "CRC:0x%04X\r\n", crc);
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
+    ui->textEdit_recv->insertPlainText(str);
+    ui->textEdit_recv->moveCursor(QTextCursor::End);
 }
 
 SerialPortTool::~SerialPortTool()

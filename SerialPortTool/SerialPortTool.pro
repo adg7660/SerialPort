@@ -42,7 +42,8 @@ HEADERS += \
         serialporttool.h \
         ymodem/Ymodem.h \
         ymodem/YmodemFileReceive.h \
-        ymodem/YmodemFileTransmit.h
+        ymodem/YmodemFileTransmit.h \
+        crc/CRC.h
 
 FORMS += \
         serialporttool.ui
