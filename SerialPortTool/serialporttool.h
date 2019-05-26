@@ -22,8 +22,8 @@
 #include <QProgressBar>
 #include <qapplication.h>
 
-#include "qcustomplot.h"
-#include "highlight_keyword.h"
+#include "qcustomplot/qcustomplot.h"
+#include "highlight_keyword/highlight_keyword.h"
 
 namespace Ui {
 class SerialPortTool;

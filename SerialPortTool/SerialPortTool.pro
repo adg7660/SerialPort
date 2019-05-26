@@ -29,14 +29,14 @@ CONFIG += c++11
 
 SOURCES += \
         main.cpp \
-        serialporttool.cpp \
-        qcustomplot.cpp \
-        highlight_keyword.cpp
+        highlight_keyword/highlight_keyword.cpp \
+        qcustomplot/qcustomplot.cpp \
+        serialporttool.cpp
 
 HEADERS += \
-        serialporttool.h \
-        qcustomplot.h \
-        highlight_keyword.h
+        highlight_keyword/highlight_keyword.h \
+        qcustomplot/qcustomplot.h \
+        serialporttool.h
 
 FORMS += \
         serialporttool.ui
